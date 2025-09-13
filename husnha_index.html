@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>حصنها — مدقق قوة الباسورد</title>
+  <style>
+    :root{
+      --blue-1: #0b6ef6;
+      --blue-2: #2185ff;
+      --bg: #f7fbff;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --good: #16a34a;
+      --bad: #ef4444;
+      --warn: #f59e0b;
+      font-family: "Noto Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background: linear-gradient(180deg,var(--bg),#f0f6ff 60%);
+      color:#0f172a;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    .wrap{
+      min-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:32px;
+      box-sizing:border-box;
+    }
+
+    .card{
+      width:100%;
+      max-width:820px;
+      background:var(--card);
+      border-radius:14px;
+      box-shadow: 0 10px 30px rgba(11,78,152,0.08);
+      padding:34px;
+      display:grid;
+      grid-template-columns: 1fr 380px;
+      gap:28px;
+      align-items:center;
+    }
+
+    /* left area (input) */
+    .left{
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+
+    h1{
+      margin:0;
+      font-size:28px;
+      color:var(--blue-2);
+      letter-spacing:0.2px;
+    }
+    p.lead{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .input-wrap{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      background: linear-gradient(90deg, rgba(11,110,246,0.06), rgba(11,110,246,0.02));
+      border-radius:12px;
+      padding:18px;
+      border:1px solid rgba(11,110,246,0.08);
+    }
+
+    input[type="password"]{
+      border:0;
+      outline:0;
+      background:transparent;
+      font-size:22px;
+      flex:1;
+      direction:ltr; /* keep password chars LTR for easier reading */
+      caret-color:var(--blue-2);
+      padding:6px 0;
+    }
+
+    .right{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:16px;
+      padding-left:8px;
+      border-left:1px solid #eef5ff;
+      min-height:160px;
+    }
+
+    .lock{
+      width:84px;
+      height:84px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      background:linear-gradient(180deg,#fff,#f3fbff);
+      box-shadow: 0 6px 18px rgba(11,110,246,0.08);
+      transition: all 240ms ease;
+    }
+
+    .score {
+      font-size:20px;
+      font-weight:700;
+      margin-top:6px;
+    }
+
+    .meter {
+      width:100%;
+      height:12px;
+      background:#eaf2ff;
+      border-radius:999px;
+      overflow:hidden;
+      box-shadow: inset 0 -2px 6px rgba(2,6,23,0.03);
+    }
+    .meter > i{
+      display:block;
+      height:100%;
+      width:0%;
+      transition: width 300ms ease, background 300ms ease;
+    }
+
+    .tips{
+      font-size:14px;
+      color:var(--muted);
+      background:linear-gradient(180deg,#fff,#fbfdff);
+      border-radius:10px;
+      padding:12px;
+      width:100%;
+      box-sizing:border-box;
+    }
+
+    ul.checks{
+      list-style:none;
+      padding:0;
+      margin:6px 0 0 0;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    ul.checks li{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      font-size:13.5px;
+      color:var(--muted);
+    }
+    .ok{ color:var(--good); font-weight:600 }
+    .no{ color:var(--bad); font-weight:600 }
+
+    /* small helpers */
+    .small { font-size:12px; color:var(--muted) }
+
+    /* responsive */
+    @media (max-width:880px){
+      .card{ grid-template-columns: 1fr; }
+      .right{ border-left: none; padding-left:0; padding-top:6px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="card" role="main" aria-labelledby="title">
+      <section class="left" aria-hidden="false">
+        <div>
+          <h1 id="title">حصنها — اختبار قوة كلمة المرور</h1>
+          <p class="lead">اكتب كلمة مرور في الحقل الكبير بالأسفل ليُقيّمها الموقع ويعطيك اقتراحات لتحسينها.</p>
+        </div>
+
+        <div class="input-wrap" aria-label="حقل كلمة المرور">
+          <!-- lock icon area -->
+          <div id="lockIconSmall" style="width:54px;height:54px;display:flex;align-items:center;justify-content:center"></div>
+
+          <input id="passwordInput" type="password" autocomplete="new-password"
+                 placeholder="أدخل كلمة المرور هنا..." aria-label="حقل كلمة المرور" />
+
+          <button id="toggleShow" title="إظهار/إخفاء" aria-pressed="false" style="border:0;background:transparent;cursor:pointer;font-size:14px;color:var(--blue-2)">
+            إظهار
+          </button>
+        </div>
+
+        <div class="tips" aria-live="polite" id="summary">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="small">قوة كلمة المرور</div>
+            <div id="ratingText" class="small">—</div>
+          </div>
+
+          <div style="margin-top:10px" class="meter" aria-hidden="true">
+            <i id="meterFill"></i>
+          </div>
+
+          <ul class="checks" id="checksList" aria-hidden="false">
+            <!-- dynamic -->
+          </ul>
+        </div>
+      </section>
+
+      <aside class="right" aria-label="معلومات أمان">
+        <div class="lock" id="lockBig" aria-hidden="false">
+          <!-- large lock SVG injected by JS -->
+        </div>
+
+        <div class="score" id="scorePercent">—</div>
+
+        <div style="width:100%;text-align:center" class="small">
+          <div id="advice" style="color:var(--muted)">ستظهر نصائح لتحسين كلمة المرور هنا.</div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    // ------- بيانات مساعدة (قائمة كلمات شائعة صغيرة) -------
+    const COMMON = [
+      "123456","123456789","password","12345678","qwerty","abc123","111111","123123",
+      "iloveyou","admin","welcome","letmein","monkey","dragon","passw0rd"
+    ];
+
+    // الدوال المساعدة
+    const el = id => document.getElementById(id);
+    const pwInput = el('passwordInput');
+    const meterFill = el('meterFill');
+    const ratingText = el('ratingText');
+    const checksList = el('checksList');
+    const scorePercent = el('scorePercent');
+    const adviceEl = el('advice');
+    const lockBig = el('lockBig');
+    const lockSmall = el('lockIconSmall');
+    const toggleShow = el('toggleShow');
+
+    // أيقونات SVG للقفل (مغلق / مفتوح)
+    const SVG_LOCK_CLOSED = `<svg width="68" height="68" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="9" width="18" height="12" rx="2" fill="#e6f4ff"/>
+      <path d="M7 10v-2a5 5 0 1 1 10 0v2" stroke="#0b6ef6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="7" y="11.5" width="10" height="7" rx="1.2" fill="#0b6ef6" opacity="0.12"/>
+      <path d="M12 15.5v-1.5" stroke="#0b6ef6" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>`;
+
+    const SVG_LOCK_OPEN = `<svg width="68" height="68" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="9" width="18" height="12" rx="2" fill="#fff0f0"/>
+      <path d="M7 10v-2a5 5 0 1 1 10 0v1" stroke="#ef4444" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M8 11.5h8v7a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-7z" stroke="#ef4444" stroke-width="1.2"/>
+    </svg>`;
+
+    // نسخة مصغرة للأيقونات الصغيرة
+    const SVG_SMALL_CLOSED = `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M7 10v-2a5 5 0 1 1 10 0v2" stroke="#0b6ef6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="7" y="11.5" width="10" height="7" rx="1.2" fill="#0b6ef6" opacity="0.14"/>
+    </svg>`;
+    const SVG_SMALL_OPEN = `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M7 10v-2a5 5 0 1 1 10 0v1" stroke="#ef4444" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="7" y="11.5" width="10" height="7" rx="1.2" fill="#ef4444" opacity="0.08"/>
+    </svg>`;
+
+    // --------------------------------------------
+    // خوارزمية تقييم بسيطة وفعّالة (client-side)
+    // --------------------------------------------
+    function evaluatePassword(pw) {
+      const result = {
+        score: 0,
+        maxScore: 10,
+        checks: [],
+        suggestions: []
+      };
+
+      if (!pw || pw.length === 0) {
+        result.score = 0;
+        result.checks.push({ok:false, text:"لم تدخل كلمة مرور"});
+        result.suggestions.push("أدخل كلمة مرور لتقييمها");
+        return result;
+      }
+
+      const len = pw.length;
+      const hasLower = /[a-z\u0600-\u06FF]/.test(pw);
+      const hasUpper = /[A-Z]/.test(pw);
+      const hasDigit = /[0-9]/.test(pw);
+      const hasSymbol = /[^A-Za-z0-9\u0600-\u06FF]/.test(pw);
+
+      if (len >= 12) { result.score += 3; result.checks.push({ok:true, text:"الطول: جيد (≥12)"}); }
+      else if (len >= 8) { result.score += 2; result.checks.push({ok:true, text:"الطول: متوسط (≥8)"}); result.suggestions.push("اجعل الطول ≥ 12 للمزيد من الأمان"); }
+      else { result.score += 0; result.checks.push({ok:false, text:"الطول: ضعيف (<8)"}); result.suggestions.push("زيادة الطول إلى 12 حرفًا أو أكثر"); }
+
+      if (hasLower) { result.score += 1; result.checks.push({ok:true, text:"يحتوي حروف صغيرة أو عربية"}); } else { result.checks.push({ok:false, text:"يفتقد حروف صغيرة أو عربية"}); result.suggestions.push("أضف حروفًا صغيرة أو حروفًا عربية"); }
+      if (hasUpper) { result.score += 1; result.checks.push({ok:true, text:"يحتوي حروف كبيرة"}); } else { result.checks.push({ok:false, text:"يفتقد حروف كبيرة"}); result.suggestions.push("أضف حرفًا كبيرًا واحدًا على الأقل (مثل A)");}
+      if (hasDigit) { result.score += 1; result.checks.push({ok:true, text:"يحتوي أرقام"}); } else { result.checks.push({ok:false, text:"يفتقد أرقام"}); result.suggestions.push("أضف رقمًا أو أكثر");}
+      if (hasSymbol) { result.score += 1; result.checks.push({ok:true, text:"يحتوي رموزًا خاصة"}); } else { result.checks.push({ok:false, text:"يفتقد رموزًا خاصة"}); result.suggestions.push("أضف رمزًا خاصًا (مثل !?@#)");}
+
+      const low = pw.toLowerCase();
+      const isCommon = COMMON.includes(low) || low.length <= 3;
+      if (isCommon) {
+        result.checks.push({ok:false, text:"كلمة شائعة أو قصيرة جداً"});
+        result.suggestions.push("تجنّب كلمات معروفة مثل 'password' أو سلاسل رقمية");
+      } else {
+        result.score += 1;
+        result.checks.push({ok:true, text:"ليست كلمة شائعة"});
+      }
+
+      const repeats = /(.)\1\1/.test(pw);
+      if (repeats) {
+        result.checks.push({ok:false, text:"تكرار كبير للأحرف (مثل aaa) قد يضعفها"});
+        result.suggestions.push("تجنّب تكرار نفس الحرف 3 مرات متتالية");
+      } else {
+        result.score += 1;
+        result.checks.push({ok:true, text:"لا يوجد تكرار مفرط للأحرف"});
+      }
+
+      const commonPatterns = ["abcdef","abcdefg","qwerty","asdfgh","12345","012345","987654","password1"];
+      const hasPattern = commonPatterns.some(p => low.includes(p));
+      if (hasPattern) {
+        result.checks.push({ok:false, text:"يحتمل وجود نمط متوقع (مثل 'abcdef' أو '12345')"});
+        result.suggestions.push("تجنّب ترتيب أحرف أو أرقام متتابعة");
+      } else {
+        result.score += 1;
+        result.checks.push({ok:true, text:"لا يوجد نمط متتابع واضح"});
+      }
+
+      if (result.score < 0) result.score = 0;
+      if (result.score > result.maxScore) result.score = result.maxScore;
+
+      return result;
+    }
+
+    function renderEvaluation(pw) {
+      const res = evaluatePassword(pw);
+      const percent = Math.round((res.score / res.maxScore) * 100);
+      scorePercent.textContent = percent + "%";
+      meterFill.style.width = percent + "%";
+
+      let color = "#ef4444";
+      let rating = "ضعيفة";
+      if (percent >= 80) { color = "#16a34a"; rating = "قوية جداً"; }
+      else if (percent >= 60) { color = "#16a34a"; rating = "قوية"; }
+      else if (percent >= 40) { color = "#f59e0b"; rating = "متوسطة"; }
+      else { color = "#ef4444"; rating = "ضعيفة"; }
+
+      meterFill.style.background = `linear-gradient(90deg, ${color}, ${shade(color, -12)})`;
+      ratingText.textContent = rating;
+
+      if (percent >= 60) {
+        lockBig.innerHTML = SVG_LOCK_CLOSED;
+        lockSmall.innerHTML = SVG_SMALL_CLOSED;
+      } else {
+        lockBig.innerHTML = SVG_LOCK_OPEN;
+        lockSmall.innerHTML = SVG_SMALL_OPEN;
+      }
+
+      checksList.innerHTML = "";
+      res.checks.forEach(c => {
+        const li = document.createElement('li');
+        li.innerHTML = `${c.ok ? '<span class="ok">✔</span>' : '<span class="no">✖</span>'} <span style="margin-inline-start:6px">${c.text}</span>`;
+        checksList.appendChild(li);
+      });
+
+      const uniqSuggestions = Array.from(new Set(res.suggestions)).slice(0,5);
+      if (uniqSuggestions.length === 0) {
+        adviceEl.textContent = "كلمة المرور جيدة — لا توجد اقتراحات إضافية.";
+      } else {
+        adviceEl.textContent = uniqSuggestions.join(" · ");
+      }
+
+      el('summary').setAttribute('aria-label', `تقييم: ${rating}. ${percent} بالمئة. ${uniqSuggestions.join('، ')}`);
+    }
+
+    function shade(hex, percent) {
+      const f = parseInt(hex.slice(1),16);
+      const t = percent < 0 ? 0 : 255;
+      const p = Math.abs(percent) / 100;
+      const R = Math.round((t - (f >> 16)) * p) + (f >> 16);
+      const G = Math.round((t - ((f >> 8) & 0x00FF)) * p) + ((f >> 8) & 0x00FF);
+      const B = Math.round((t - (f & 0x0000FF) ) * p) + (f & 0x0000FF);
+      return "#" + (0x1000000 + (R<<16) + (G<<8) + B).toString(16).slice(1);
+    }
+
+    pwInput.addEventListener('input', (e) => renderEvaluation(e.target.value));
+    renderEvaluation("");
+
+    toggleShow.addEventListener('click', () => {
+      const type = pwInput.type === 'password' ? 'text' : 'password';
+      pwInput.type = type;
+      toggleShow.textContent = type === 'text' ? 'إخفاء' : 'إظهار';
+      toggleShow.setAttribute('aria-pressed', type === 'text' ? 'true' : 'false');
+      pwInput.focus();
+    });
+
+    pwInput.addEventListener('paste', () => setTimeout(()=> renderEvaluation(pwInput.value), 20));
+
+    pwInput.addEventListener('focus', () => pwInput.style.boxShadow = "0 6px 20px rgba(11,110,246,0.08)");
+    pwInput.addEventListener('blur', () => pwInput.style.boxShadow = "none");
+  </script>
+</body>
+</html>
